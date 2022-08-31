@@ -14,9 +14,13 @@ const UserSchema = new mongoose.Schema({
         trim: true,
         minlength: 8
     },
+    date_of_join: {
+        type: Date
+    },
     role: {
         type: String,
-        enum: ['SUPER_USER', 'EMPLOYEE']
+        enum: ['SUPER_USER', 'EMPLOYEE'],
+        default: 'EMPLOYEE'
     }
 })
 

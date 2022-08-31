@@ -39,18 +39,25 @@ var transporter = nodemailer.createTransport({
 })
 
 //While inserting create an account for each employee with username as email and randome generated password and send those credentials via email to employee
-app.post('/', uploads.single('csv'), async (req, res) => {
+app.post('/api/users', uploads.single('csv'), async (req, res) => {
     try {
         var jsonObj = await csv().fromFile(req.file.path);
 
         var empArr = jsonObj.map((emp) => {
-            emp.password = generator.generate({
+            var password = generator.generate({
                 length: 10,
                 numbers: true
             });
-            return emp;
-        })
 
+            var username = emp['Email'];
+            var date_of_join = emp['Date of join'];
+            return {
+                username,
+                password,
+                date_of_join
+            };
+        })
+        console.log(empArr);
         var users = await User.insertMany(empArr);
 
         await Promise.all(users.map(async (user) => {
@@ -74,7 +81,7 @@ app.post('/', uploads.single('csv'), async (req, res) => {
 });
 
 //Inserting a single user
-app.post('/user', async (req, res) => {
+app.post('/api/user', async (req, res) => {
     try {
         var user = new User(req.body);
         await user.save();
@@ -85,7 +92,7 @@ app.post('/user', async (req, res) => {
 })
 
 //List All Inserted Details 
-app.get('/', auth, async (req, res) => {
+app.get('/api/users', auth, async (req, res) => {
     try {
         var users = await User.find();
         res.status(200).send({
