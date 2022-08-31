@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const auth = require('./middleware/auth');
 const checkRole = require('./middleware/role');
 const User = require('./model/user');
+const nodemailer = require('nodemailer');
 
 var app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -29,6 +30,14 @@ var storage = multer.diskStorage({
 
 var uploads = multer({ storage: storage });
 
+var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'airlinepros_admin@gmail.com',
+        pass: 'airlinepros'
+    }
+})
+
 //While inserting create an account for each employee with username as email and randome generated password and send those credentials via email to employee
 app.post('/', uploads.single('csv'), async (req, res) => {
     try {
@@ -41,8 +50,22 @@ app.post('/', uploads.single('csv'), async (req, res) => {
             });
             return emp;
         })
-        console.log(empArr);
-        await User.insertMany(empArr);
+
+        var users = await User.insertMany(empArr);
+
+        await Promise.all(users.map(async (user) => {
+            var mailOptions = {
+                from: 'airlinepros_admin@gmail.com',
+                to: user.username,
+                subject: 'Please find your password for the site',
+                text: user.password
+            }
+            console.log(mailOptions);
+            transporter.sendMail(mailOptions, function (error, info) {
+                console.log('Error', error);
+                console.log('Info', info);
+            })
+        }))
         res.status(201).send('Inserted successfully');
     } catch (e) {
         console.log(e);
@@ -98,6 +121,19 @@ app.post('/api/login', async function (req, res) {
         res.status(500).send('Internal Server Error');
     }
 });
+
+//api for getting the detail page of the record
+app.get('/api/user/:id',auth, async (req,res) => {
+    try{
+        var user = await User.findById(req.params.id);
+        res.status(200).send({
+            msg:'Details of particular user',
+            userDetails: user
+        });
+    }catch(e){
+        res.status(500).send("internal Server Error");
+    }
+})
 
 //api for update
 app.put('/api/user/:id', auth, checkRole('SUPER_USER'), async function (req, res) {
